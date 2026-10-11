@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Results & Security Analysis - IDOR Virtual Lab{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.6rem;">Security Analysis & Verification Results</h1>
+        <p>Comparative Evaluation: Vulnerable vs. Secure Access Control Architecture</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('lab.export_report') }}" class="btn btn-primary" download>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export Experiment Report (.md)</span>
+        </a>
+    </div>
+</div>
+
+<!-- Comparison Summary Cards -->
+<div class="grid-3" style="margin-bottom: 1.75rem;">
+    <div class="stat-card">
+        <div class="stat-label">OWASP Classification</div>
+        <div class="stat-value" style="font-size: 1.3rem; color: var(--accent-red);">A01:2021</div>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
+            Broken Access Control &bull; CWE-634
+        </p>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Flawed Pattern</div>
+        <div class="stat-value" style="font-size: 1.3rem; color: var(--accent-amber);">Direct PK Query</div>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
+            <code>SELECT WHERE id = ?</code>
+        </p>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Remediation Pattern</div>
+        <div class="stat-value" style="font-size: 1.3rem; color: var(--accent-emerald);">Session Binding</div>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
+            <code>WHERE id = ? AND owner_id = session_id</code>
+        </p>
+    </div>
+</div>
+
+<!-- Comprehensive Comparison Matrix Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Experimental Authorization Test Matrix</span>
+        </div>
+        <span class="badge badge-info">Empirical Comparison</span>
+    </div>
+
+    <p style="font-size: 0.85rem; margin-bottom: 1rem;">
+        The table below documents the behavioral differences observed between Mode A (Vulnerable) and Mode B (Secure):
+    </p>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Test Scenario</th>
+                    <th>Request Action</th>
+                    <th>Vulnerable Mode (Mode A)</th>
+                    <th>Secure Mode (Mode B)</th>
+                    <th>Security Outcome</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>1. Legitimate Resource Access</strong></td>
+                    <td>Alice requests <code>/api/documents/101</code></td>
+                    <td><span class="badge badge-secure">HTTP 200 OK</span></td>
+                    <td><span class="badge badge-secure">HTTP 200 OK</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Allowed (Legitimate)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>2. Horizontal IDOR Attempt</strong></td>
+                    <td>Alice requests Bob's <code>/api/documents/201</code></td>
+                    <td><span class="badge badge-vulnerable">HTTP 200 OK (LEAK)</span></td>
+                    <td><span class="badge badge-secure">HTTP 403 Forbidden</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Denied in Secure Mode</span></td>
+                </tr>
+                <tr>
+                    <td><strong>3. Peer Legitimate Access</strong></td>
+                    <td>Bob requests his own <code>/api/documents/201</code></td>
+                    <td><span class="badge badge-secure">HTTP 200 OK</span></td>
+                    <td><span class="badge badge-secure">HTTP 200 OK</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Allowed (Legitimate)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>4. Anonymous / Unauthenticated</strong></td>
+                    <td>Unauthenticated client requests <code>201</code></td>
+                    <td><span class="badge badge-secure">HTTP 401 Unauthorized</span></td>
+                    <td><span class="badge badge-secure">HTTP 401 Unauthorized</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Auth Enforced in Both</span></td>
+                </tr>
+                <tr>
+                    <td><strong>5. Nonexistent Identifier</strong></td>
+                    <td>Alice requests non-existent <code>999</code></td>
+                    <td><span class="badge badge-gray">HTTP 404 Not Found</span></td>
+                    <td><span class="badge badge-gray">HTTP 404 Not Found</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Non-disclosing response</span></td>
+                </tr>
+                <tr>
+                    <td><strong>6. Unauthorized State Change</strong></td>
+                    <td>Alice updates Bob's <code>201</code></td>
+                    <td><span class="badge badge-vulnerable">HTTP 200 OK (TAMPER)</span></td>
+                    <td><span class="badge badge-secure">HTTP 403 Forbidden</span></td>
+                    <td><span style="color: var(--accent-emerald); font-weight: 600;">Integrity Protected</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Deep Dive: Root Cause and Remediation -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title" style="color: var(--accent-red);">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span>Root Cause Analysis</span>
+            </div>
+        </div>
+        <ul style="padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.6rem;">
+            <li>
+                <strong>Omission of Server-Side Authorization:</strong> The API endpoint relies on authentication to verify the user's presence, but assumes any logged-in user can access any record ID.
+            </li>
+            <li>
+                <strong>Client-Side Trust:</strong> Direct object references from URL parameters (<code>/api/documents/&lt;id&gt;</code>) are treated as authorized requests without verifying object ownership.
+            </li>
+            <li>
+                <strong>Broken Horizontal Boundaries:</strong> The application lacks tenant- or user-level segmentation at the database query layer.
+            </li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title" style="color: var(--accent-emerald);">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Remediation & Lessons Learned</span>
+            </div>
+        </div>
+        <ul style="padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.6rem;">
+            <li>
+                <strong>Bind Queries to Session Identity:</strong> Always include <code>owner_id = session['user_id']</code> in the SQL <code>WHERE</code> clause.
+            </li>
+            <li>
+                <strong>Enforce Server-Side Checks on Every Request:</strong> Authorization logic must never live only in frontend JavaScript or UI button visibility.
+            </li>
+            <li>
+                <strong>UUIDs Are Not Access Control:</strong> Unguessable identifiers provide defense-in-depth against enumeration, but do not replace authorization.
+            </li>
+            <li>
+                <strong>Fail Closed:</strong> If an authorization check fails, return an explicit HTTP 403 Forbidden or non-disclosing 404 Not Found.
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h4 style="color: var(--text-main);">Experiment Documentation</h4>
+        <p style="font-size: 0.85rem;">Download the full reproducible lab report including test outcomes and evidence.</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('lab.export_report') }}" class="btn btn-primary" download>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download Lab Report (.md)</span>
+        </a>
+        <button class="btn btn-outline" data-action="open-reset-modal" style="color: var(--accent-red); border-color: rgba(220, 38, 38, 0.4);">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>Reset Experiment Data</span>
+        </button>
+    </div>
+</div>
+{% endblock %}

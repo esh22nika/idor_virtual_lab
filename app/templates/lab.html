@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}Guided Exercises - IDOR Virtual Lab{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.6rem;">
+            {% if active_tab == 'intro' %}Introduction to IDOR & Access Control
+            {% elif active_tab == 'lab1_inspect_ref' %}Lab 1: Understand Object References
+            {% elif active_tab == 'lab2_exploit_idor' %}Lab 2: Exploit Broken Authorization
+            {% elif active_tab == 'lab3_remediate_check' %}Lab 3: Remediate IDOR Vulnerability
+            {% elif active_tab == 'lab4_verify_scenarios' %}Lab 4: Verify the Secure Implementation
+            {% elif active_tab == 'burp_guide' %}Burp Suite Community Edition Manual
+            {% endif %}
+        </h1>
+        <p>Interactive Hands-On Security Training</p>
+    </div>
+
+    <!-- Mode Banner / Quick Toggle -->
+    <div>
+        {% if current_mode == 'vulnerable' %}
+            <span class="badge badge-vulnerable" style="padding: 0.4rem 0.75rem;">
+                <span class="pulse-dot"></span> VULNERABLE MODE ACTIVE
+            </span>
+        {% else %}
+            <span class="badge badge-secure" style="padding: 0.4rem 0.75rem;">
+                <span class="pulse-dot"></span> SECURE MODE ACTIVE
+            </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ======================================================================= -->
+<!-- TAB 0: INTRODUCTION TO IDOR -->
+<!-- ======================================================================= -->
+{% if active_tab == 'intro' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>Anatomy of Insecure Direct Object References (CWE-634)</span>
+        </div>
+        <span class="badge badge-info">Core Concept</span>
+    </div>
+    
+    <p style="margin-bottom: 1rem;">
+        An <strong>Insecure Direct Object Reference (IDOR)</strong> occurs when an application provides direct access to objects based on user-supplied input, but fails to perform sufficient server-side authorization checks to verify that the requesting user has permission to access that specific object.
+    </p>
+
+    <div class="grid-2" style="margin: 1.5rem 0;">
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Authentication vs. Authorization
+            </h4>
+            <p style="font-size: 0.85rem;">
+                <strong>Authentication</strong> confirms <em>who you are</em> (e.g. Alice logged in with valid credentials).<br><br>
+                <strong>Authorization</strong> determines <em>what you are permitted to do</em> (e.g. Alice can view Document 101, but MUST NOT be allowed to view Bob's Document 201).<br><br>
+                <em>Common Developer Mistake:</em> Verifying that a session exists, but assuming that any logged-in user can request any valid object ID.
+            </p>
+        </div>
+
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-amber); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                The Myth of Obscure Identifiers
+            </h4>
+            <p style="font-size: 0.85rem;">
+                Replacing sequential IDs (e.g. <code>101</code>) with opaque tokens or UUIDs (e.g. <code>d3b07384d113...</code>) makes guessing more difficult, but does <strong>not</strong> solve access control.<br><br>
+                If an opaque identifier leaks (via referer headers, logs, or shared links), an unauthorized user can still access the data if the backend lacks ownership checks.<br><br>
+                <strong>True access control requires server-side authorization on every protected request.</strong>
+            </p>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <a href="{{ url_for('lab.lab_view', exercise_id='lab1_inspect_ref') }}" class="btn btn-primary">
+            <span>Begin Lab 1: Understand Object References &rarr;</span>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- TAB 1: LAB 1 - UNDERSTAND OBJECT REFERENCES -->
+<!-- ======================================================================= -->
+{% if active_tab == 'lab1_inspect_ref' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>Exercise 1: Identify Direct Object References</span>
+        </div>
+        <span id="badge-lab1_inspect_ref" class="badge badge-gray">Not Started</span>
+    </div>
+
+    <p style="margin-bottom: 1rem;">
+        <strong>Objective:</strong> Learn how web applications use resource identifiers to reference database records, and understand the difference between resource identity and authorization.
+    </p>
+
+    <!-- Step-by-step instructions -->
+    <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+        <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">Experiment Walkthrough:</h4>
+        <ol style="padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.4rem;">
+            <li>You are currently authenticated as <strong>Alice</strong>.</li>
+            <li>Inspect your seeded documents table below. Alice owns documents <code>101</code> and <code>102</code>.</li>
+            <li>Observe how the document identifier appears directly in the REST API route: <code>GET /api/documents/101</code>.</li>
+            <li>Answer the exercise questions below to complete Lab 1.</li>
+        </ol>
+    </div>
+
+    <!-- Alice's Documents List -->
+    <div style="margin-bottom: 1.5rem;">
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Alice's Accessible Documents:</h4>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Identifier</th>
+                        <th>Document Title</th>
+                        <th>Target Endpoint</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td><code>{{ doc.id }}</code></td>
+                        <td>{{ doc.title }}</td>
+                        <td><code>/api/documents/{{ doc.id }}</code></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Feedback Container -->
+    <div id="feedback-lab1_inspect_ref" class="alert" style="display: none;"></div>
+
+    <!-- Lab 1 Submission Form -->
+    <form id="form-lab1">
+        <div class="form-group">
+            <label class="form-label" for="lab1-doc-id">1. Enter one of Alice's document identifiers:</label>
+            <input type="number" id="lab1-doc-id" class="form-control" style="max-width: 250px;" placeholder="e.g. 101" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">2. Conceptual Question: Does knowing or presenting a valid resource ID prove that the user is authorized to access it?</label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.88rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab1_concept" value="yes">
+                    <span><strong>Yes:</strong> If a user knows the specific ID, they must be the legitimate owner.</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab1_concept" value="no">
+                    <span><strong>No:</strong> The ID only identifies what object is requested; the server must verify ownership separately.</span>
+                </label>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+            <button type="submit" class="btn btn-primary">
+                Validate Lab 1 Answers
+            </button>
+            <button type="button" class="btn btn-outline" onclick="alert('Hint: Alice owns documents with IDs 101 and 102. Identifiers specify identity, not permissions!')">
+                Show Hint
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- TAB 2: LAB 2 - EXPLOIT BROKEN AUTHORIZATION (VULNERABLE MODE) -->
+<!-- ======================================================================= -->
+{% if active_tab == 'lab2_exploit_idor' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Exercise 2: Demonstrate IDOR in Vulnerable Mode</span>
+        </div>
+        <span id="badge-lab2_exploit_idor" class="badge badge-gray">Not Started</span>
+    </div>
+
+    <p style="margin-bottom: 1rem;">
+        <strong>Objective:</strong> Exploit horizontal privilege escalation by requesting a peer student's document identifier while authenticated as Alice.
+    </p>
+
+    <!-- Lab Mode Prerequisite Notice -->
+    {% if current_mode != 'vulnerable' %}
+    <div class="alert alert-warning" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+                <strong>Prerequisite Action Required:</strong><br>
+                This exercise demonstrates the flaw. You must switch to <strong>Vulnerable Mode</strong> to observe the vulnerability.
+            </div>
+            <button class="btn btn-danger btn-sm" data-action="switch-mode" data-mode="vulnerable">
+                Switch to Vulnerable Mode
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-danger" style="margin-bottom: 1.25rem;">
+        <div>
+            <strong>Vulnerable Educational Mode Active:</strong><br>
+            The backend document retrieval endpoint is now omitting ownership checks. Any authenticated user can access any document identifier.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Instructions -->
+    <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+        <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">Exploitation Steps:</h4>
+        <ol style="padding-left: 1.25rem; font-size: 0.88rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.4rem;">
+            <li>You are logged in as <strong>Alice</strong> (owns docs 101, 102).</li>
+            <li>Another student account, <strong>Bob</strong>, owns confidential documents <code>201</code> and <code>202</code>.</li>
+            <li>Use the <strong>Interactive Request Inspector</strong> below (or Burp Suite) to change the requested document path from <code>/api/documents/101</code> to <code>/api/documents/201</code>.</li>
+            <li>Click <strong>Send Request</strong> to execute the real HTTP request against the Flask backend.</li>
+            <li>Observe that the server returns Bob's private notes with HTTP 200 OK!</li>
+            <li>Submit the completion form below to validate the exercise.</li>
+        </ol>
+    </div>
+
+    <!-- Interactive Request & Response Inspector -->
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Interactive HTTP Request Inspector</h3>
+    <p style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+        This panel dispatches live asynchronous HTTP requests to the real Flask server using your authenticated session cookie.
+    </p>
+
+    <div class="inspector-panel">
+        <div class="inspector-bar">
+            <span class="http-method">GET</span>
+            <input type="text" id="inspector-path-input" class="url-input" value="/api/documents/201" placeholder="/api/documents/201">
+            <button type="button" class="btn btn-primary btn-sm" id="inspector-send-btn">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Send Request</span>
+            </button>
+        </div>
+
+        <div style="padding: 0.75rem 1rem; background-color: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Server Response</span>
+            <span id="inspector-status-badge" class="response-status-badge status-200">HTTP Ready</span>
+        </div>
+
+        <div class="grid-2" style="gap: 0; border-bottom: 1px solid #334155;">
+            <div style="border-right: 1px solid #334155;">
+                <div style="padding: 0.4rem 0.75rem; font-size: 0.75rem; color: #94a3b8; background-color: #0b0f19;">Response Headers</div>
+                <div class="response-viewer" id="inspector-response-headers" style="height: 150px; font-size: 0.75rem;">
+(No request sent yet)
+                </div>
+            </div>
+            <div>
+                <div style="padding: 0.4rem 0.75rem; font-size: 0.75rem; color: #94a3b8; background-color: #0b0f19;">Response Body (JSON)</div>
+                <div class="response-viewer" id="inspector-response-body" style="height: 150px;">
+{
+  "info": "Click 'Send Request' to query the server"
+}
+                </div>
+            </div>
+        </div>
+
+        <div id="inspector-annotation" class="alert" style="margin: 0.75rem; display: none;"></div>
+    </div>
+
+    <!-- Feedback Container -->
+    <div id="feedback-lab2_exploit_idor" class="alert" style="display: none; margin-top: 1.25rem;"></div>
+
+    <!-- Lab 2 Completion Form -->
+    <form id="form-lab2" style="margin-top: 1.5rem;">
+        <div class="form-group">
+            <label class="form-label" for="lab2-target-id">Target Document Identifier Accessed:</label>
+            <input type="number" id="lab2-target-id" class="form-control" style="max-width: 250px;" value="201" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="lab2-explanation">Explain why this response demonstrates an authorization failure (IDOR):</label>
+            <textarea id="lab2-explanation" class="form-control" rows="3" placeholder="Explain why returning Bob's document to Alice constitutes broken access control..." required></textarea>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn-primary">
+                Submit Lab 2 Verification
+            </button>
+            <button type="button" class="btn btn-outline" onclick="alert('Hint: Replay GET /api/documents/201 in Vulnerable Mode first. The server will log the cross-user retrieval!')">
+                Show Hint
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- TAB 3: LAB 3 - REMEDIATE IDOR -->
+<!-- ======================================================================= -->
+{% if active_tab == 'lab3_remediate_check' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Exercise 3: Remediate Broken Authorization</span>
+        </div>
+        <span id="badge-lab3_remediate_check" class="badge badge-gray">Not Started</span>
+    </div>
+
+    <p style="margin-bottom: 1rem;">
+        <strong>Objective:</strong> Understand how to implement server-side access control checks in application code and database queries.
+    </p>
+
+    <!-- Code comparison side by side -->
+    <div class="grid-2" style="margin-bottom: 1.5rem;">
+        <div>
+            <h4 style="color: #dc2626; margin-bottom: 0.5rem;">Vulnerable Pattern (Omitted Ownership)</h4>
+            <div class="code-box" style="font-size: 0.8rem; height: 260px;">
+<span class="kw">def</span> <span class="fn">get_document</span>(doc_id):
+    <span class="comment"># Only verifies user is logged in</span>
+    user_id = session.get(<span class="str">'user_id'</span>)
+    <span class="kw">if not</span> user_id:
+        <span class="kw">return</span> jsonify({<span class="str">'error'</span>: <span class="str">'Auth required'</span>}), 401
+
+    <span class="comment"># FLAW: Queries ID alone without ownership check!</span>
+    doc = db.execute(
+        <span class="str">"SELECT * FROM documents WHERE id = ?"</span>,
+        (doc_id,)
+    ).fetchone()
+    
+    <span class="kw">return</span> jsonify(doc) <span class="comment"># Leaks other users' data!</span>
+            </div>
+        </div>
+
+        <div>
+            <h4 style="color: #166534; margin-bottom: 0.5rem;">Secure Pattern (Enforced Ownership)</h4>
+            <div class="code-box" style="font-size: 0.8rem; height: 260px;">
+<span class="kw">def</span> <span class="fn">get_document</span>(doc_id):
+    user_id = session.get(<span class="str">'user_id'</span>)
+    <span class="kw">if not</span> user_id:
+        <span class="kw">return</span> jsonify({<span class="str">'error'</span>: <span class="str">'Auth required'</span>}), 401
+
+    <span class="comment"># FIX: Server binds query to authenticated session user!</span>
+    doc = db.execute(
+        <span class="str">"SELECT * FROM documents WHERE id = ? AND owner_id = ?"</span>,
+        (doc_id, user_id)
+    ).fetchone()
+
+    <span class="kw">if not</span> doc:
+        <span class="kw">return</span> jsonify({<span class="str">'error'</span>: <span class="str">'Forbidden'</span>}), 403
+    <span class="kw">return</span> jsonify(doc)
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Container -->
+    <div id="feedback-lab3_remediate_check" class="alert" style="display: none;"></div>
+
+    <!-- Review Quiz -->
+    <form id="form-lab3">
+        <div class="form-group">
+            <label class="form-label">1. How should the backend retrieve protected records safely?</label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.88rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab3_query" value="client_parameter">
+                    <span>Accept a <code>user_id</code> supplied in the HTTP request body or query parameter and trust it.</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab3_query" value="session_ownership">
+                    <span>Validate ownership against the trusted server-side <code>session['user_id']</code> (or filter by <code>owner_id = session['user_id']</code>).</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">2. Does switching document IDs from integers to UUIDs eliminate IDOR?</label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.88rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab3_uuid" value="yes">
+                    <span>Yes, because UUIDs cannot be brute-forced or guessed.</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="lab3_uuid" value="insufficient">
+                    <span>No. Obscurity is not access control. If a UUID is discovered or leaked, an unauthorized user can still access it without server-side checks.</span>
+                </label>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+            <button type="submit" class="btn btn-primary">
+                Validate Remediation Concepts
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- TAB 4: LAB 4 - VERIFY THE FIX -->
+<!-- ======================================================================= -->
+{% if active_tab == 'lab4_verify_scenarios' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Exercise 4: Verify the Secure Implementation</span>
+        </div>
+        <span id="badge-lab4_verify_scenarios" class="badge badge-gray">Not Started</span>
+    </div>
+
+    <p style="margin-bottom: 1rem;">
+        <strong>Objective:</strong> Verify that the secure implementation blocks unauthorized cross-user access, preserves legitimate user access, and enforces authorization on state changes.
+    </p>
+
+    <!-- Lab Mode Prerequisite Notice -->
+    {% if current_mode != 'secure' %}
+    <div class="alert alert-warning" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+                <strong>Prerequisite:</strong> Verification testing requires <strong>Secure Mode</strong> to be enabled.
+            </div>
+            <button class="btn btn-success btn-sm" data-action="switch-mode" data-mode="secure">
+                Switch to Secure Mode
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Test Scenarios Table -->
+    <div class="table-responsive" style="margin-bottom: 1.5rem;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Scenario Vector</th>
+                    <th>Expected HTTP Status</th>
+                    <th>Actual Status</th>
+                    <th>Verification Result</th>
+                </tr>
+            </thead>
+            <tbody id="scenario-results-table-body">
+                <tr>
+                    <td><strong>Scenario A: Alice requests own document (101)</strong></td>
+                    <td><code>HTTP 200 OK</code></td>
+                    <td><span style="color: var(--text-dim);">Pending Run</span></td>
+                    <td><span class="badge badge-gray">UNVERIFIED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Scenario B: Alice requests Bob's document (201)</strong></td>
+                    <td><code>HTTP 403 Forbidden</code></td>
+                    <td><span style="color: var(--text-dim);">Pending Run</span></td>
+                    <td><span class="badge badge-gray">UNVERIFIED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Scenario C: Unauthenticated client requests document (201)</strong></td>
+                    <td><code>HTTP 401 Unauthorized</code></td>
+                    <td><span style="color: var(--text-dim);">Pending Run</span></td>
+                    <td><span class="badge badge-gray">UNVERIFIED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Scenario D: Alice requests nonexistent document (999)</strong></td>
+                    <td><code>HTTP 404 Not Found</code></td>
+                    <td><span style="color: var(--text-dim);">Pending Run</span></td>
+                    <td><span class="badge badge-gray">UNVERIFIED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Scenario E: Alice attempts unauthorized modification of doc 201</strong></td>
+                    <td><code>HTTP 403 Forbidden</code></td>
+                    <td><span style="color: var(--text-dim);">Pending Run</span></td>
+                    <td><span class="badge badge-gray">UNVERIFIED</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Feedback Container -->
+    <div id="feedback-lab4_verify_scenarios" class="alert" style="display: none; margin-bottom: 1.25rem;"></div>
+
+    <div style="display: flex; gap: 0.75rem;">
+        <button type="button" class="btn btn-success" id="btn-run-lab4">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Run Verification Suite</span>
+        </button>
+        <a href="{{ url_for('lab.results_view') }}" class="btn btn-outline">
+            View Complete Report &rarr;
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- TAB 5: BURP SUITE GUIDE TAB -->
+<!-- ======================================================================= -->
+{% if active_tab == 'burp_guide' %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            <span>Burp Suite Community Edition Manual Walkthrough</span>
+        </div>
+        <span class="badge badge-info">Tool Integration</span>
+    </div>
+
+    <p style="margin-bottom: 1rem;">
+        Follow these steps to inspect and replay IDOR HTTP requests using PortSwigger Burp Suite Community Edition.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Step 1: Launch Burp Suite and Embedded Browser</h4>
+            <p style="font-size: 0.88rem;">
+                Open Burp Suite Community Edition. Under the <strong>Proxy</strong> tab &rarr; <strong>Intercept</strong> sub-tab, click <strong>Open Browser</strong>. Navigate to <code>http://localhost:5000</code>.
+            </p>
+        </div>
+
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Step 2: Log in as Alice and Intercept Document Request</h4>
+            <p style="font-size: 0.88rem;">
+                Log in as <code>alice</code>. Open your dashboard or send a request for document <code>101</code>. In Burp Suite, open <strong>Proxy &rarr; HTTP History</strong> and locate the request:
+            </p>
+            <div class="code-box" style="margin-top: 0.5rem; font-size: 0.8rem;">
+GET /api/documents/101 HTTP/1.1
+Host: localhost:5000
+Cookie: session=eyJfcGVybWFuZW50Ijp...
+Accept: application/json
+            </div>
+        </div>
+
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Step 3: Send to Repeater and Replay with Bob's ID</h4>
+            <p style="font-size: 0.88rem;">
+                Right-click the request in HTTP History and choose <strong>Send to Repeater</strong> (or press <code>Ctrl + R</code>).<br>
+                In Repeater, change the URL path from <code>/api/documents/101</code> to <code>/api/documents/201</code>.<br>
+                Click <strong>Send</strong>.
+            </p>
+            <div class="code-box" style="margin-top: 0.5rem; font-size: 0.8rem;">
+<span class="comment"># Vulnerable Mode Response:</span>
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "document": {
+    "id": 201,
+    "owner_name": "Bob Martin (Peer Reviewer)",
+    "title": "Bob's Private Notes"
+  }
+}
+            </div>
+        </div>
+
+        <div style="background-color: var(--bg-card-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Step 4: Repeat in Secure Mode</h4>
+            <p style="font-size: 0.88rem;">
+                Switch the lab to <strong>Secure Mode</strong> in the header. Re-send the same request for <code>201</code> in Repeater.
+            </p>
+            <div class="code-box" style="margin-top: 0.5rem; font-size: 0.8rem;">
+<span class="comment"># Secure Mode Response:</span>
+HTTP/1.1 403 FORBIDDEN
+Content-Type: application/json
+
+{
+  "error": "Forbidden",
+  "message": "Access denied: you do not have permission to view this document."
+}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

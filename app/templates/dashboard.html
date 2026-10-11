@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - IDOR Virtual Lab{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.75rem;">Student Security Operations Dashboard</h1>
+            <p>Interactive Virtual Lab &bull; Broken Object-Level Authorization (IDOR / CWE-634)</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{{ url_for('lab.lab_view', exercise_id='lab1_inspect_ref') }}" class="btn btn-primary">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Launch Guided Exercises</span>
+            </a>
+            <a href="{{ url_for('lab.results_view') }}" class="btn btn-outline">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span>View Security Matrix</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Safety Notice Banner -->
+<div class="alert alert-warning" style="margin-bottom: 1.75rem;">
+    <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+        <svg class="icon" style="margin-top: 0.2rem;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+            <strong>Isolated Educational Environment Notice:</strong><br>
+            All accounts, document records, and tokens within this sandbox are synthetic. Exercises are restricted strictly to <code>localhost</code>. Testing access control vulnerabilities against unauthorized production environments is illegal and unethical.
+        </div>
+    </div>
+</div>
+
+<!-- Progress and Status Grid -->
+<div class="grid-3" style="margin-bottom: 1.75rem;">
+    <!-- Overall Progress Card -->
+    <div class="stat-card">
+        <div class="stat-label">Lab Completion Progress</div>
+        <div class="stat-value" id="progress-pct-text">0%</div>
+        <div class="progress-container">
+            <div class="progress-bar" id="overall-progress-bar" style="width: 0%;"></div>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-dim);">
+            Completed: <span id="completed-count-text" style="color: var(--text-main); font-weight: 600;">0/4</span> Exercises Passed
+        </p>
+    </div>
+
+    <!-- Operating Mode Card -->
+    <div class="stat-card">
+        <div class="stat-label">Current Backend Engine</div>
+        <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            {% if current_mode == 'vulnerable' %}
+                <span class="badge badge-vulnerable" style="font-size: 0.9rem; padding: 0.4rem 0.75rem;">
+                    <span class="pulse-dot"></span> VULNERABLE MODE
+                </span>
+            {% else %}
+                <span class="badge badge-secure" style="font-size: 0.9rem; padding: 0.4rem 0.75rem;">
+                    <span class="pulse-dot"></span> SECURE MODE
+                </span>
+            {% endif %}
+        </div>
+        <p style="font-size: 0.8rem; margin-top: 0.75rem; color: var(--text-dim);">
+            {% if current_mode == 'vulnerable' %}
+                Direct database query without ownership verification.
+            {% else %}
+                Server-side session check enforced on all requests.
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Active User Context -->
+    <div class="stat-card">
+        <div class="stat-label">Active Session Identity</div>
+        <div class="stat-value" style="font-size: 1.35rem; color: var(--accent-cyan);">
+            {{ current_user.username }}
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
+            Role: <strong>{{ current_user.role|capitalize }}</strong> &bull; User ID: <strong>{{ current_user.id }}</strong>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--accent-emerald); margin-top: 0.25rem; font-weight: 600;">
+            Authenticated Session Active
+        </p>
+    </div>
+</div>
+
+<!-- Attack vs Defense Architectural Comparison Card -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <span>Attack vs. Defense: Architectural Model</span>
+        </div>
+        <span class="badge badge-info">Concept Architecture</span>
+    </div>
+    
+    <div class="grid-2">
+        <!-- Attack / Vulnerable Flow -->
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h4 style="color: #991b1b;">Mode A: Insecure Direct Object Reference (Vulnerable)</h4>
+                <span class="badge badge-vulnerable">Flawed</span>
+            </div>
+            <p style="font-size: 0.85rem; margin-bottom: 1rem; color: #7f1d1d;">
+                The client changes the document ID in the URL. The server authenticates the user, but queries the resource by ID alone without checking who owns it.
+            </p>
+            <div class="code-box" style="font-size: 0.78rem;">
+<span class="comment"># Client: Alice (User ID 1) requests Bob's doc (ID 201)</span>
+GET /api/documents/201 HTTP/1.1
+Cookie: session=Alice_Session_Token
+
+<span class="comment"># Flawed Backend Query (Omits ownership check):</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> documents <span class="kw">WHERE</span> id = 201;
+
+<span class="comment"># RESULT: 200 OK &bull; Bob's confidential draft leaked to Alice!</span>
+            </div>
+        </div>
+
+        <!-- Defense / Secure Flow -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <h4 style="color: #166534;">Mode B: Enforced Object-Level Authorization (Secure)</h4>
+                <span class="badge badge-secure">Defended</span>
+            </div>
+            <p style="font-size: 0.85rem; margin-bottom: 1rem; color: #14532d;">
+                The server authenticates the user and binds the database query to the session identity, or validates that the resource owner matches <code>session['user_id']</code>.
+            </p>
+            <div class="code-box" style="font-size: 0.78rem;">
+<span class="comment"># Client: Alice requests Bob's doc (ID 201)</span>
+GET /api/documents/201 HTTP/1.1
+Cookie: session=Alice_Session_Token
+
+<span class="comment"># Secure Backend Query (Session-Bound):</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> documents 
+<span class="kw">WHERE</span> id = 201 <span class="kw">AND</span> owner_id = session[<span class="str">'user_id'</span>];
+
+<span class="comment"># RESULT: 403 Forbidden &bull; Horizontal escalation blocked!</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seeded Documents Section -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Your Private Documents ({{ current_user.username|capitalize }})</span>
+        </div>
+        <span class="badge badge-gray">Seeded Account Data</span>
+    </div>
+    
+    <p style="font-size: 0.85rem; margin-bottom: 1rem;">
+        These are the legitimate records associated with your logged-in account in the lab database.
+    </p>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Document ID</th>
+                    <th>Document Title</th>
+                    <th>Classification</th>
+                    <th>REST Endpoint</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td><code>{{ doc.id }}</code></td>
+                    <td><strong>{{ doc.title }}</strong></td>
+                    <td><span class="badge badge-info">{{ doc.classification }}</span></td>
+                    <td><code>/api/documents/{{ doc.id }}</code></td>
+                    <td>
+                        <a href="{{ url_for('lab.lab_view', exercise_id='lab1_inspect_ref') }}" class="btn btn-outline btn-sm">
+                            Inspect in Lab 1
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-dim);">No documents found for this account.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Lab Exercises Status Cards -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <span>Guided Experiment Modules</span>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Lab 1 Card -->
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.05rem;">Lab 1: Understand Object References</h3>
+                    <span id="badge-lab1_inspect_ref" class="badge badge-gray">Not Started</span>
+                </div>
+                <p style="font-size: 0.85rem;">
+                    Inspect Alice's document requests, extract direct object references, and understand REST identifier semantics.
+                </p>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab1_inspect_ref') }}" class="btn btn-outline btn-sm">
+                    Open Lab 1 &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Lab 2 Card -->
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.05rem;">Lab 2: Exploit Broken Authorization</h3>
+                    <span id="badge-lab2_exploit_idor" class="badge badge-gray">Not Started</span>
+                </div>
+                <p style="font-size: 0.85rem;">
+                    Switch to Vulnerable Mode, replay HTTP requests with Bob's document ID (201), and observe unauthorized data disclosure.
+                </p>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab2_exploit_idor') }}" class="btn btn-outline btn-sm">
+                    Open Lab 2 &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Lab 3 Card -->
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.05rem;">Lab 3: Remediate IDOR</h3>
+                    <span id="badge-lab3_remediate_check" class="badge badge-gray">Not Started</span>
+                </div>
+                <p style="font-size: 0.85rem;">
+                    Analyze server-side authorization patterns, contrast session-bound queries against UUID obfuscation, and verify the fix.
+                </p>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab3_remediate_check') }}" class="btn btn-outline btn-sm">
+                    Open Lab 3 &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Lab 4 Card -->
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.05rem;">Lab 4: Verify the Fix</h3>
+                    <span id="badge-lab4_verify_scenarios" class="badge badge-gray">Not Started</span>
+                </div>
+                <p style="font-size: 0.85rem;">
+                    Execute automated multi-scenario test suites in Secure Mode verifying access control enforcement across 5 test vectors.
+                </p>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab4_verify_scenarios') }}" class="btn btn-outline btn-sm">
+                    Open Lab 4 &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

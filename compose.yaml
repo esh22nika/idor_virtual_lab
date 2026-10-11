@@ -1,0 +1,23 @@
+services:
+  idor-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: idor-virtual-lab
+    restart: unless-stopped
+    # Security Boundary: Bind strictly to localhost interface (127.0.0.1)
+    # Prevents exposing vulnerable educational exercises to the external network
+    ports:
+      - "127.0.0.1:${PORT:-5001}:5000"
+    environment:
+      - FLASK_ENV=production
+      - LAB_MODE=secure
+      - SECRET_KEY=idor-local-educational-secret-key-391823
+      - SESSION_COOKIE_SECURE=False
+      - DATABASE_PATH=/home/labuser/app/instance/idor_lab.sqlite
+    volumes:
+      - lab-data:/home/labuser/app/instance
+
+volumes:
+  lab-data:
+    name: idor_virtual_lab_data

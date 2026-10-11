@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}IDOR Virtual Lab{% endblock %} - Web App Security SDE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Application Header -->
+    <header class="app-header">
+        <div class="header-brand">
+            <div class="brand-shield">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+                <div class="brand-title">IDOR Virtual Lab</div>
+                <div class="brand-subtitle">CWE-634 &bull; Broken Object-Level Authorization</div>
+            </div>
+        </div>
+
+        <div class="header-controls">
+            <!-- Current Mode Indicator & Quick Switch -->
+            <div class="mode-control" style="display: flex; align-items: center; gap: 0.5rem;">
+                {% if current_mode == 'vulnerable' %}
+                    <span class="badge badge-vulnerable" title="Vulnerable educational sandbox active">
+                        <span class="pulse-dot"></span> VULNERABLE MODE (EDUCATIONAL)
+                    </span>
+                    <button class="btn btn-outline btn-sm" data-action="switch-mode" data-mode="secure" title="Switch to Secure Mode">
+                        Switch to Secure Mode
+                    </button>
+                {% else %}
+                    <span class="badge badge-secure" title="Server-side authorization enforced">
+                        <span class="pulse-dot"></span> SECURE MODE
+                    </span>
+                    <button class="btn btn-outline btn-sm" data-action="switch-mode" data-mode="vulnerable" title="Switch to Vulnerable Mode for exercises">
+                        Switch to Vulnerable Mode
+                    </button>
+                {% endif %}
+            </div>
+
+            {% if current_user %}
+            <!-- Logged-in User Profile -->
+            <div class="user-indicator">
+                <div class="user-avatar">{{ current_user.username[0]|upper }}</div>
+                <div>
+                    <span style="font-weight: 600; color: var(--text-main);">{{ current_user.username }}</span>
+                    <span style="color: var(--text-dim); font-size: 0.75rem;"> (ID: {{ current_user.id }})</span>
+                </div>
+            </div>
+
+            <!-- Logout Form -->
+            <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-outline btn-sm">Logout</button>
+            </form>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="app-container">
+        {% if current_user %}
+        <!-- Left Navigation Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-nav">
+                <div class="nav-section-title">Navigation</div>
+                <a href="{{ url_for('lab.dashboard') }}" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('lab.lab_view', exercise_id='intro') }}" class="nav-link {% if request.path == '/lab/intro' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span>Introduction to IDOR</span>
+                </a>
+
+                <div class="nav-section-title">Guided Labs</div>
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab1_inspect_ref') }}" class="nav-link {% if request.path == '/lab/lab1_inspect_ref' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span>1. Understand Object Ref</span>
+                </a>
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab2_exploit_idor') }}" class="nav-link {% if request.path == '/lab/lab2_exploit_idor' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    <span>2. Exploit Broken Auth</span>
+                </a>
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab3_remediate_check') }}" class="nav-link {% if request.path == '/lab/lab3_remediate_check' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>3. Remediate IDOR</span>
+                </a>
+                <a href="{{ url_for('lab.lab_view', exercise_id='lab4_verify_scenarios') }}" class="nav-link {% if request.path == '/lab/lab4_verify_scenarios' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <span>4. Verify the Fix</span>
+                </a>
+
+                <div class="nav-section-title">Assessment & Tools</div>
+                <a href="{{ url_for('lab.results_view') }}" class="nav-link {% if request.path == '/results' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Results & Report</span>
+                </a>
+                <a href="{{ url_for('lab.burp_guide_view') }}" class="nav-link {% if request.path == '/burp-guide' %}active{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    <span>Burp Suite Guide</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-sm" data-action="open-reset-modal" style="width: 100%; border-color: rgba(220, 38, 38, 0.4); color: var(--accent-red);">
+                    <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    <span>Reset Lab Data</span>
+                </button>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main Dynamic Content -->
+        <main class="app-main">
+            <div class="content-wrapper">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="reset-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-red); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Reset Educational Lab?
+            </h3>
+            <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                This action will restore all seeded documents and accounts to their baseline states and reset all exercise progress records. Are you sure you want to proceed?
+            </p>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button type="button" class="btn btn-outline" id="reset-cancel-btn">Cancel</button>
+                <button type="button" class="btn btn-danger" id="reset-confirm-btn">Confirm Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

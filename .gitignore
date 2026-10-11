@@ -1,0 +1,27 @@
+# Python cache and byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment & Local Secrets
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & Pytest artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+junit/
+
+# Flask & SQLite instance databases
+instance/
+*.sqlite
+*.db
+
+# OS generated files
+.DS_Store
+Thumbs.db
